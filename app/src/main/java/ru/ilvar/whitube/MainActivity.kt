@@ -20,18 +20,16 @@ import org.json.JSONException
 import java.net.URL
 import java.util.*
 import android.util.DisplayMetrics
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
+import java.io.*
 
 
 class MainActivity : Activity() {
     var jsonList: JSONArray = JSONArray()
     var ytPlayer: YouTubePlayer? = null
-    var vidIdx = 0
+    var vidIdx = -1
     var vidCount = -1
     var gallery: LinearLayout? = null
+    var splash: FrameLayout? = null
     val covers = mutableListOf<ImageButton>()
     val videoIds = mutableListOf<String>()
 
@@ -40,20 +38,26 @@ class MainActivity : Activity() {
         if (vidIdx >= vidCount) {
             vidIdx = 0
         }
-        val vidObj = jsonList.getJSONObject(vidIdx)
+        setVideo(vidIdx)
 
-        val videoId = vidObj.getString("yid")
-        setVideo(videoId)
-
-        for (i in 0..(vidIdx+25)) {
-            if (i < jsonList.length()) {
-                createCover(videoIds[i], i)
+        Thread({
+            for (i in 0..videoIds.size-1) {
+                loadCover(videoIds[i])
             }
-        }
+        }).start()
     }
 
-    fun setVideo(videoId: String) {
+    fun setVideo(i: Int) {
+        val videoId = videoIds[i]
+        vidIdx = i
         ytPlayer?.loadVideo(videoId, 0f)
+        Thread.sleep(100)
+
+        for (j in vidIdx..(vidIdx+5)) {
+            if (j < videoIds.size) {
+                createCover(videoIds[j], j)
+            }
+        }
     }
 
     override fun onPause() {
@@ -62,10 +66,21 @@ class MainActivity : Activity() {
         ytPlayer?.pause()
     }
 
-    override fun onResume() {
-        super.onResume()
+    fun loadCover(videoId: String): InputStream {
+        val file = File(cacheDir, "video_" + videoId)
 
-        ytPlayer?.play()
+        if (file.exists() and file.isFile) {
+            return FileInputStream(file)
+        } else {
+            val thumb_u = URL("https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg")
+
+            val content = thumb_u.readBytes()
+            val outputStream = FileOutputStream(file)
+            outputStream.write(content)
+            outputStream.close()
+
+            return content.inputStream()
+        }
     }
 
     fun createCover(videoId: String, i: Int): ImageButton {
@@ -85,60 +100,29 @@ class MainActivity : Activity() {
         imageView.setAdjustViewBounds(true)
         imageView.maxHeight = metrics.heightPixels / 3
 
-        val file = File(cacheDir, "video_" + videoId)
-
-        if (file.exists() and file.isFile) {
-            try {
-                val inputStream = FileInputStream(file)
-                val thumb_d = Drawable.createFromStream(inputStream, "src")
-                imageView.setImageDrawable(thumb_d)
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        } else {
-            try {
-                val thumb_u = URL("https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg")
-
-                val content = thumb_u.readBytes()
-                try {
-                    val outputStream = FileOutputStream(file)
-                    outputStream.write(content)
-                    outputStream.close()
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
-
-                val thumb_d = Drawable.createFromStream(content.inputStream(), "src")
-                imageView.setImageDrawable(thumb_d)
-            } catch (e: Exception) {
-                val bmp = BitmapFactory.decodeResource(getResources(), R.drawable.abc_btn_colored_material)
-                imageView.setImageBitmap(bmp);
-
-                e.printStackTrace()
-            }
-        }
+        val thumb_d = Drawable.createFromStream(loadCover(videoId), "src")
+        imageView.setImageDrawable(thumb_d)
 
         imageView.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View) {
                 val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay)
                 clickOverlay.visibility = View.INVISIBLE
-                setVideo(videoId)
+                setVideo(i)
             }
         })
 
         covers.add(i, imageView)
         gallery?.addView(imageView)
 
+        System.out.println("Loaded cover for " + videoId)
+
         return imageView
     }
 
-    fun loadVideos() {
-        val json = URL("https://pacific-cove-93657.herokuapp.com/videos/").readText()
-
+    fun parseVideosJSON(json: String) {
         try {
             jsonList = JSONArray(json)
 
-            gallery = findViewById<LinearLayout>(R.id.gallery)
             vidCount = jsonList.length()
             for (i in 0..(vidCount - 1)) {
 
@@ -152,13 +136,62 @@ class MainActivity : Activity() {
         }
 
         Collections.shuffle(videoIds)
-        nextVideo()
+    }
+
+    fun loadCached() {
+        val file = File(cacheDir, "list.json")
+        System.out.println("Loading videos list from cache...")
+
+        if (file.exists() and file.isFile) {
+            try {
+                val inputStream = FileInputStream(file)
+                val json = inputStream.reader().readText()
+
+                parseVideosJSON(json)
+                System.out.println("Parsed JSON")
+
+                nextVideo()
+                System.out.println("Started video")
+
+                Thread({
+                    loadVideos(false)
+                    System.out.println("Loaded from internet")
+                }).start()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                loadVideos(true)
+                System.out.println("Error, loaded from internet")
+            }
+        } else {
+            loadVideos(true)
+            System.out.println("No data, loaded from internet")
+        }
+    }
+
+    fun loadVideos(start: Boolean) {
+        val json = URL("https://pacific-cove-93657.herokuapp.com/videos/").readText()
+
+        try {
+            val file = File(cacheDir, "list.json")
+            val outputStream = FileOutputStream(file)
+            outputStream.write(json.toByteArray())
+            outputStream.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
+        if (start) {
+            parseVideosJSON(json)
+
+            Collections.shuffle(videoIds, Random(System.currentTimeMillis()))
+            nextVideo()
+        }
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val activity = this
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
 
@@ -166,16 +199,23 @@ class MainActivity : Activity() {
 
         val youTubePlayerView = findViewById<YouTubePlayerView>(R.id.youtube_player_view)
 
+        gallery = findViewById<LinearLayout>(R.id.gallery)
+        splash = findViewById<FrameLayout>(R.id.splash)
+
         youTubePlayerView.initialize({ initializedYouTubePlayer ->
             ytPlayer = initializedYouTubePlayer
             initializedYouTubePlayer.addListener(object : AbstractYouTubePlayerListener() {
                 override fun onReady() {
-                    loadVideos()
+                    loadCached()
                 }
 
                 override fun onStateChange(state: Int) {
                     if (state == PlayerConstants.PlayerState.ENDED) {
                         nextVideo()
+                    }
+                    if (state == PlayerConstants.PlayerState.PLAYING) {
+                        splash?.visibility = View.INVISIBLE
+                        splash = null
                     }
                     super.onStateChange(state)
                 }
@@ -208,5 +248,6 @@ class MainActivity : Activity() {
 
             }
         });
+
     }
 }
