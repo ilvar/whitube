@@ -39,25 +39,22 @@
         android:id="@+id/galleryOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_centerVertical="false"
         android:visibility="invisible">
 
 
-        <HorizontalScrollView
-            android:id="@+id/horizontal_scroll"
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/gallery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|center_horizontal">
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:layout_gravity="bottom|fill_horizontal"
+            android:gravity="bottom|center_horizontal"
+            android:orientation="horizontal"
+            android:scrollbars="horizontal">
 
-            <LinearLayout
-                android:id="@+id/gallery"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="bottom|center_horizontal"
-                android:orientation="horizontal">
-
-            </LinearLayout>
-
-        </HorizontalScrollView>
+        </android.support.v7.widget.RecyclerView>
 
     </FrameLayout>
 
