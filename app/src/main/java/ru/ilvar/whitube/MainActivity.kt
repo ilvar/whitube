@@ -60,6 +60,14 @@ class MainActivity : Activity() {
         clickOverlay.visibility = View.VISIBLE
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        ytPlayer?.pause()
+        val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
+        clickOverlay.visibility = View.VISIBLE
+    }
+
     fun parseVideosJSON(json: String) {
         try {
             jsonList = JSONArray(json)
@@ -176,9 +184,9 @@ class MainActivity : Activity() {
                         nextVideo()
                     }
                     if (state == PlayerConstants.PlayerState.PLAYING) {
-                        splash?.visibility = View.INVISIBLE
-                        splash?.removeAllViews()
-                        splash = null
+                        if (splash?.visibility != View.INVISIBLE) {
+                            splash?.visibility = View.INVISIBLE
+                        }
                     }
                     super.onStateChange(state)
                 }
