@@ -1,7 +1,5 @@
 package ru.ilvar.whitube
 
-import android.app.Activity
-import android.content.Context
 import android.graphics.drawable.Drawable
 import android.support.v7.widget.RecyclerView
 import android.util.Log
@@ -26,7 +24,9 @@ class VideosAdapter(
             for(v in videos) {
                 val file = File(cacheDir, "video_" + v.videoId)
                 if (!file.exists() or !file.isFile) {
-                    loadCoverFromInternet(v.videoId)
+                    try {
+                        loadCoverFromInternet(v.videoId)
+                    } catch (e: java.io.FileNotFoundException) {}
                 }
             }
         }).start()
@@ -42,8 +42,10 @@ class VideosAdapter(
         holder.img?.scaleType = ImageView.ScaleType.FIT_CENTER;
         holder.img?.maxHeight = thumbHeight
         holder.img?.minimumHeight = thumbHeight
-        holder.img?.setImageDrawable(createCover(videos[position].videoId));
-        holder.mainActivity = mainActivity
+        try {
+            holder.img?.setImageDrawable(createCover(videos[position].videoId));
+            holder.mainActivity = mainActivity
+        } catch (e: java.io.FileNotFoundException) {}
     }
 
     override fun getItemCount() = videos.size

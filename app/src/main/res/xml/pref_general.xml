@@ -1,0 +1,7 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="Channels" android:key="alp_channels">
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

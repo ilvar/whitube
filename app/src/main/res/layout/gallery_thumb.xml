@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:fadingEdge="vertical"
+    android:fadingEdgeLength="8dp"
     android:layout_width="wrap_content"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
     android:orientation="horizontal">
 
     <ImageView
@@ -12,7 +14,9 @@
         android:layout_height="match_parent"
         android:adjustViewBounds="true"
         android:contentDescription="@string/app_name"
-        android:padding="2dp"
+        android:padding="1dp"
         android:scaleType="fitCenter"
-        android:src="@drawable/background_splash" />
+        android:src="@drawable/background_splash"
+        tools:alpha="128"
+        tools:fadeScrollbars="false" />
 </LinearLayout>

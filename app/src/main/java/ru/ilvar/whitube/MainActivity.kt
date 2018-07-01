@@ -1,10 +1,12 @@
 package ru.ilvar.whitube
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.StrictMode
 import android.view.View
-import android.widget.Button
 import android.widget.FrameLayout
 import com.pierfrancescosoffritti.youtubeplayer.player.AbstractYouTubePlayerListener
 import com.pierfrancescosoffritti.youtubeplayer.player.PlayerConstants
@@ -19,6 +21,8 @@ import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.util.DisplayMetrics
 import android.util.Log
+import android.widget.Button
+import android.widget.ImageButton
 import android.widget.LinearLayout
 
 
@@ -29,6 +33,7 @@ class MainActivity : Activity() {
     var vidCount = -1
     var splash: FrameLayout? = null
     val videoIds = mutableListOf<String>()
+    var isPlaying: Boolean? = null
 
     fun nextVideo() {
         vidIdx += 1
@@ -38,10 +43,23 @@ class MainActivity : Activity() {
         setVideo(vidIdx)
     }
 
+    fun prevVideo() {
+        vidIdx -= 1
+        if (vidIdx < 0) {
+            vidIdx = vidCount - 1
+        }
+        setVideo(vidIdx)
+    }
+
     fun setVideo(i: Int) {
-        val videoId = videoIds[i]
-        vidIdx = i
-        ytPlayer?.loadVideo(videoId, 0f)
+        try {
+            val videoId = videoIds[i]
+            vidIdx = i
+            ytPlayer?.loadVideo(videoId, 0f)
+
+            val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
+            clickOverlay.visibility = View.INVISIBLE
+        } catch(e: java.lang.IndexOutOfBoundsException) {}
     }
 
     fun setVideo(videoId: String) {
@@ -52,12 +70,45 @@ class MainActivity : Activity() {
         }
     }
 
+    fun stopPlaying() {
+        if (isPlaying == true) {
+            isPlaying = false
+            val sharedPref = this.getPreferences(Context.MODE_PRIVATE) ?: return
+            with(sharedPref.edit()) {
+                putBoolean(getString(R.string.saved_playing_state), false)
+                apply()
+            }
+        }
+    }
+
+    fun getPlayingState(): Boolean? {
+        val sharedPref = this.getPreferences(Context.MODE_PRIVATE) ?: return null
+        val key = getString(R.string.saved_playing_state)
+        if (sharedPref.contains(key)) {
+            return sharedPref.getBoolean(key, false)
+        } else {
+            return null
+        }
+    }
+
     override fun onPause() {
         super.onPause()
 
         ytPlayer?.pause()
         val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
         clickOverlay.visibility = View.VISIBLE
+
+        stopPlaying()
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        ytPlayer?.pause()
+        val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
+        clickOverlay.visibility = View.VISIBLE
+
+        stopPlaying()
     }
 
     override fun onResume() {
@@ -66,6 +117,8 @@ class MainActivity : Activity() {
         ytPlayer?.pause()
         val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
         clickOverlay.visibility = View.VISIBLE
+
+        stopPlaying()
     }
 
     fun parseVideosJSON(json: String) {
@@ -122,8 +175,22 @@ class MainActivity : Activity() {
 
     }
 
-    fun loadVideos(start: Boolean) {
-        val json = URL("https://pacific-cove-93657.herokuapp.com/videos/").readText()
+    private fun loadVideos(start: Boolean) {
+        val currentLocale = resources.configuration.locale
+        val lang = currentLocale.isO3Language
+
+        Log.e("lang", "Lang: $lang")
+
+        val sharedPref = this.application.getSharedPreferences("ALP", Context.MODE_PRIVATE) ?: return
+        val defaultValue: MutableSet<String> = hashSetOf()
+        val selectedLists = sharedPref.getStringSet(getString(R.string.selected_channels), defaultValue)
+
+        val listsKey = if (selectedLists.size > 0) { "?lists=" + selectedLists.joinToString(separator=",") } else { "" }
+        val videosUrl = "https://pacific-cove-93657.herokuapp.com/videos/$listsKey"
+
+        Log.e("URL", videosUrl)
+
+        val json = URL(videosUrl).readText()
 
         try {
             val file = File(cacheDir, "list.json")
@@ -137,7 +204,7 @@ class MainActivity : Activity() {
         if (start) {
             parseVideosJSON(json)
 
-            Collections.shuffle(videoIds, Random(System.currentTimeMillis()))
+            videoIds.shuffle(Random(System.currentTimeMillis()))
             nextVideo()
         }
     }
@@ -152,6 +219,16 @@ class MainActivity : Activity() {
 
         val recyclerView = findViewById<View>(R.id.gallery) as RecyclerView
         recyclerView.setHasFixedSize(true)
+
+        val mainActivity = this
+        val settingsButton = findViewById<ImageButton>( R.id.settingsButton );
+        settingsButton.setOnClickListener(object : View.OnClickListener {
+            override fun onClick(v: View) {
+                val intent = Intent(mainActivity, ChannelsActivity::class.java).apply {}
+                startActivity(intent)
+            }
+        });
+
 
         loadCached(false)
 
@@ -170,17 +247,25 @@ class MainActivity : Activity() {
 
         val youTubePlayerView = findViewById<YouTubePlayerView>(R.id.youtube_player_view)
 
-        splash = findViewById<FrameLayout>(R.id.splash)
+        splash = findViewById(R.id.splash)
 
         youTubePlayerView.initialize({ initializedYouTubePlayer ->
             ytPlayer = initializedYouTubePlayer
             initializedYouTubePlayer.addListener(object : AbstractYouTubePlayerListener() {
                 override fun onReady() {
-                    nextVideo()
+                    if (splash?.visibility != View.INVISIBLE) {
+                        splash?.visibility = View.INVISIBLE
+                    }
+                    isPlaying = getPlayingState()
+                    Log.d("Whitube", "isPlaying is " + isPlaying.toString())
+                    if (isPlaying == null) {
+                        nextVideo()
+                        isPlaying = true
+                    }
                 }
 
                 override fun onStateChange(state: Int) {
-                    if (state == PlayerConstants.PlayerState.ENDED) {
+                    if (state == PlayerConstants.PlayerState.ENDED && isPlaying == true) {
                         nextVideo()
                     }
                     if (state == PlayerConstants.PlayerState.PLAYING) {
@@ -191,7 +276,7 @@ class MainActivity : Activity() {
                     super.onStateChange(state)
                 }
             })
-        }, true)
+        }, false)
 
         youTubePlayerView.enterFullScreen()
 
@@ -205,20 +290,36 @@ class MainActivity : Activity() {
         uiController.showFullscreenButton(false)
         uiController.showUI(false)
 
-        val clickOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
-        val clickButton = findViewById<Button>(R.id.nextButton);
-        clickButton.setOnClickListener(object : View.OnClickListener {
-            override fun onClick(v: View) {
-                if (clickOverlay.visibility == View.VISIBLE) {
-                    clickOverlay.visibility = View.INVISIBLE
-                    ytPlayer?.play()
-                } else {
-                    clickOverlay.visibility = View.VISIBLE
-                    ytPlayer?.pause()
-                }
+        val galleryOverlay = findViewById<FrameLayout>(R.id.galleryOverlay);
+        val videoOverlay = findViewById<FrameLayout>(R.id.videoOverlay);
+        videoOverlay.setOnClickListener {
+            galleryOverlay.visibility = View.VISIBLE
+            ytPlayer?.pause()
+            isPlaying = false
+        }
 
-            }
-        });
+        val playButton = findViewById<ImageButton>(R.id.playButton);
+        playButton.setOnClickListener {
+            galleryOverlay.visibility = View.INVISIBLE
+            ytPlayer?.play()
+            isPlaying = true
+        }
+
+        val nextButton = findViewById<ImageButton>(R.id.nextButton);
+        nextButton.setOnClickListener {
+            galleryOverlay.visibility = View.INVISIBLE
+            this.nextVideo()
+            ytPlayer?.play()
+            isPlaying = true
+        }
+
+        val prevButton = findViewById<ImageButton>(R.id.prevButton);
+        prevButton.setOnClickListener {
+            galleryOverlay.visibility = View.INVISIBLE
+            this.prevVideo()
+            ytPlayer?.play()
+            isPlaying = true
+        }
 
     }
 }

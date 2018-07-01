@@ -19,20 +19,11 @@
 
     </FrameLayout>
 
-
     <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:id="@+id/overlay"
+        android:id="@+id/videoOverlay"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="visible">
+        android:layout_height="match_parent">
 
-        <Button
-            android:id="@+id/nextButton"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:layout_margin="96dp"
-            android:layout_marginHorizontal="128dp" />
     </FrameLayout>
 
     <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -40,15 +31,69 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_centerVertical="false"
-        android:visibility="invisible">
+        android:visibility="visible">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingBottom="128dp">
+            <ImageButton
+                android:id="@+id/playButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginBottom="32dp"
+                android:layout_marginLeft="128dp"
+                android:layout_marginRight="128dp"
+                android:layout_marginTop="32dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/play_pause"
+                app:srcCompat="@drawable/ic_play_circle"
+                android:src="@drawable/ic_play_circle" />
 
+            <ImageButton
+                android:id="@+id/settingsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="5dp"
+                android:background="#00000000"
+                android:padding="5dp"
+                android:minWidth="30sp"
+                android:maxWidth="30sp"
+                app:srcCompat="@drawable/ic_list_alt"
+                android:src="@drawable/ic_list_alt"
+                />
+
+            <ImageButton
+                android:id="@+id/nextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:layout_margin="5dp"
+                android:paddingBottom="11dp"
+                android:background="#00000000"
+                android:padding="5dp"
+                android:src="@drawable/ic_next"
+                app:srcCompat="@drawable/ic_next" />
+
+            <ImageButton
+                android:id="@+id/prevButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start|center_vertical"
+                android:layout_margin="5dp"
+                android:paddingBottom="11dp"
+                android:background="#00000000"
+                android:padding="5dp"
+                android:src="@drawable/ic_previous"
+                app:srcCompat="@drawable/ic_previous" />
+        </FrameLayout>
 
         <android.support.v7.widget.RecyclerView
             android:id="@+id/gallery"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentStart="true"
+            android:layout_height="128dp"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:background="#33FFFFFF"
             android:layout_gravity="bottom|fill_horizontal"
             android:gravity="bottom|center_horizontal"
             android:orientation="horizontal"
@@ -62,7 +107,19 @@
         android:id="@+id/splash"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/background_splash">
+        android:background="@color/colorSplash"
+        android:visibility="invisible">
+
+        <ImageView
+            android:id="@+id/splashImg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:adjustViewBounds="true"
+            android:background="@drawable/ic_splash0"
+            android:visibility="visible"
+            app:srcCompat="@drawable/ic_splash0" />
+
 
     </FrameLayout>
 
